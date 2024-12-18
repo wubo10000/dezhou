@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州扑克记分系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #121212;
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255,215,0,0.5);
+            position: relative;
+        }
+
+        h1::before, h1::after {
+            content: "♠";
+            color: #ffd700;
+            margin: 0 10px;
+            font-size: 0.8em;
+            text-shadow: 0 0 5px rgba(255,215,0,0.3);
+        }
+
+        .game-list {
+            margin-top: 20px;
+        }
+
+        .game-card {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #404040;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .game-card::before {
+            content: "♣";
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 24px;
+            opacity: 0.1;
+            color: #fff;
+        }
+
+        .game-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            transform: translateY(-1px);
+        }
+
+        .game-info {
+            color: #fff;
+        }
+
+        .game-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .game-date {
+            color: #bbb;
+            font-size: 14px;
+        }
+
+        .add-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffd700, #b8860b);
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .input-group {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 400px;
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            background: #333;
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #ffd700, #b8860b);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        button.delete {
+            background: #f44336;
+        }
+
+        .game-card .btn-group {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .game-card button {
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>德州扑克记分系统</h1>
+        
+        <div class="game-list" id="gameList">
+            <!-- 游戏列表将通过JavaScript动态添加 -->
+        </div>
+
+        <div class="overlay" id="overlay"></div>
+        <div class="input-group">
+            <input type="text" id="gameName" placeholder="游戏名称">
+            <div class="btn-group">
+                <button onclick="createGame()">创建</button>
+                <button onclick="hideAddForm()" class="delete">取消</button>
+            </div>
+        </div>
+
+        <button class="add-button" onclick="showAddForm()">+</button>
+    </div>
+
+    <script>
+        let games = [];
+        let editingGameId = null;
+        const API_URL = 'https://你的vercel域名/api';
+
+        async function fetchGames() {
+            try {
+                const response = await fetch(`${API_URL}/games`);
+                games = await response.json();
+                updateGameList();
+            } catch (error) {
+                console.error('Error fetching games:', error);
+            }
+        }
+
+        async function createGame() {
+            const name = document.getElementById('gameName').value;
+            
+            if (!name) {
+                alert('请输入游戏名称');
+                return;
+            }
+
+            if (editingGameId) {
+                try {
+                    await fetch(`${API_URL}/games/${editingGameId}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ name })
+                    });
+                    editingGameId = null;
+                } catch (error) {
+                    console.error('Error updating game:', error);
+                    return;
+                }
+            } else {
+                const game = {
+                    id: Date.now().toString(),
+                    name: name,
+                    date: new Date().toISOString(),
+                    players: []
+                };
+                try {
+                    await fetch(`${API_URL}/games`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(game)
+                    });
+                } catch (error) {
+                    console.error('Error creating game:', error);
+                    return;
+                }
+            }
+
+            hideAddForm();
+            fetchGames();
+        }
+
+        async function deleteGame(gameId) {
+            if (confirm('确定要删除该游戏记录吗？')) {
+                try {
+                    await fetch(`${API_URL}/games/${gameId}`, {
+                        method: 'DELETE'
+                    });
+                    fetchGames();
+                } catch (error) {
+                    console.error('Error deleting game:', error);
+                }
+            }
+        }
+
+        function enterGame(gameId) {
+            sessionStorage.setItem('currentGame', gameId);
+            window.location.href = 'dezhou.html';
+        }
+
+        function updateGameList() {
+            const gameList = document.getElementById('gameList');
+            gameList.innerHTML = '';
+            
+            games.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            games.forEach((game, index) => {
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.innerHTML = `
+                    <div class="game-info">
+                        <div class="game-title">${game.name}</div>
+                        <div class="game-date">${new Date(game.date).toLocaleString()}</div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="enterGame('${game.id}')">进入</button>
+                        <button onclick="editGame('${game.id}')">编辑</button>
+                        <button onclick="deleteGame('${game.id}')" class="delete">删除</button>
+                    </div>
+                `;
+                gameList.appendChild(card);
+            });
+        }
+
+        function showAddForm() {
+            document.querySelector('.input-group').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('gameName').value = '';
+        }
+
+        function hideAddForm() {
+            document.querySelector('.input-group').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('gameName').value = '';
+            editingGameId = null;
+        }
+
+        function editGame(gameId) {
+            const game = games.find(g => g.id === gameId);
+            if (game) {
+                editingGameId = gameId;
+                document.getElementById('gameName').value = game.name;
+                showAddForm();
+            }
+        }
+
+        // 初始化显示
+        fetchGames();
+    </script>
+</body>
+</html> 

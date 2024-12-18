@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州扑克计分板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #121212;
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255,215,0,0.5);
+            position: relative;
+        }
+
+        h1::before, h1::after {
+            content: "♠";
+            color: #ffd700;
+            margin: 0 10px;
+            font-size: 0.8em;
+            text-shadow: 0 0 5px rgba(255,215,0,0.3);
+        }
+
+        .total-profit {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 8px;
+            border: 1px solid #404040;
+            overflow: auto;
+            text-align: left;
+        }
+
+        .total-profit table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .total-profit td {
+            padding: 5px 10px;
+            white-space: nowrap;
+        }
+
+        .total-profit .label {
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .total-profit .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .total-profit .value.profit {
+            color: #f44336;
+        }
+
+        .total-profit .value.loss {
+            color: #4CAF50;
+        }
+
+        .total-profit .chips {
+            margin-right: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .add-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffd700, #b8860b);
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .back-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #404040;
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input {
+            padding: 12px;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            font-size: 16px;
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #ffd700, #b8860b);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        button.delete {
+            background: #f44336;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        .player-list {
+            margin-top: 20px;
+        }
+
+        .player-card {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #404040;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            overflow: auto;
+            position: relative;
+        }
+
+        .player-card::before {
+            content: "♣";
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 24px;
+            opacity: 0.1;
+            color: #fff;
+        }
+
+        .player-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            transform: translateY(-1px);
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .player-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .chips-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            color: #bbb;
+            font-size: 15px;
+        }
+
+        .chips-info .label {
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .chips-info .value {
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .chips-row {
+            display: flex;
+            justify-content: flex-start;
+            gap: 20px;
+            align-items: center;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .chips-info span {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .profit {
+            font-weight: bold;
+            margin-left: auto;
+        }
+
+        .profit.positive {
+            color: #f44336;
+        }
+
+        .profit.negative {
+            color: #4CAF50;
+        }
+
+        .money {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .money.positive {
+            color: #f44336;
+        }
+
+        .money.negative {
+            color: #4CAF50;
+        }
+
+        .editable-text input {
+            width: 80px;
+            padding: 4px;
+            margin: 0 5px;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            background: #333;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        @media screen and (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+
+            input {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            button {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .player-name {
+                font-size: 16px;
+            }
+        }
+
+        .total-profit .chips-row {
+            display: flex;
+            justify-content: flex-start;
+            padding-left: 20px;
+            gap: 10px;
+            white-space: nowrap;
+            min-width: min-content;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>德州扑克计分板</h1>
+        
+        <div class="total-profit">
+            <table>
+                <tr id="totalChips"></tr>
+                <tr id="totalMoney"></tr>
+            </table>
+        </div>
+
+        <div class="overlay" id="overlay"></div>
+        <div class="input-group">
+            <input type="text" id="playerName" placeholder="玩家名称">
+            <input type="number" id="borrowAmount" placeholder="借入筹码">
+            <input type="number" id="currentAmount" placeholder="当前持有">
+            <div class="btn-group">
+                <button onclick="addOrUpdatePlayer()">保存</button>
+                <button onclick="hideAddForm()" class="delete">取消</button>
+            </div>
+        </div>
+
+        <div class="player-list" id="playerList">
+            <!-- 玩家列表将通过JavaScript动态添加 -->
+        </div>
+
+        <button class="add-button" onclick="showAddForm()">+</button>
+        <button class="back-button" onclick="goBack()">←</button>
+    </div>
+
+    <script>
+        const currentGameId = sessionStorage.getItem('currentGame');
+        let currentGame = null;
+        let players = [];
+        let editingIndex = -1;
+        const API_URL = 'https://你的vercel域名/api';
+
+        async function fetchGameData() {
+            try {
+                const [gameResponse, playersResponse] = await Promise.all([
+                    fetch(`${API_URL}/games/${currentGameId}`),
+                    fetch(`${API_URL}/games/${currentGameId}/players`)
+                ]);
+                currentGame = await gameResponse.json();
+                players = await playersResponse.json();
+                setPageTitle();
+                updatePlayerList();
+            } catch (error) {
+                console.error('Error fetching game data:', error);
+            }
+        }
+
+        async function addOrUpdatePlayer() {
+            const name = document.getElementById('playerName').value;
+            const borrowAmount = parseInt(document.getElementById('borrowAmount').value) || 0;
+            const currentAmount = parseInt(document.getElementById('currentAmount').value) || 0;
+            
+            if (!name) {
+                alert('请输入玩家名称');
+                return;
+            }
+
+            if (editingIndex >= 0) {
+                try {
+                    await fetch(`${API_URL}/games/${currentGameId}/players/${players[editingIndex].name}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ borrowAmount, currentAmount })
+                    });
+                } catch (error) {
+                    console.error('Error updating player:', error);
+                    return;
+                }
+                editingIndex = -1;
+            } else {
+                if (players.some(p => p.name === name)) {
+                    alert('该玩家已存在');
+                    return;
+                }
+                try {
+                    await fetch(`${API_URL}/games/${currentGameId}/players`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ name, borrowAmount, currentAmount })
+                    });
+                } catch (error) {
+                    console.error('Error adding player:', error);
+                    return;
+                }
+            }
+
+            fetchGameData();
+            clearInputs();
+            hideAddForm();
+        }
+
+        async function deletePlayer(index) {
+            if (confirm('确定要删除该玩家记录吗？')) {
+                try {
+                    await fetch(`${API_URL}/games/${currentGameId}/players/${players[index].name}`, {
+                        method: 'DELETE'
+                    });
+                    fetchGameData();
+                } catch (error) {
+                    console.error('Error deleting player:', error);
+                }
+            }
+        }
+
+        function updateBorrow(index, value) {
+            players[index].borrowAmount = parseInt(value) || 0;
+        }
+
+        function updateCurrent(index, value) {
+            players[index].currentAmount = parseInt(value) || 0;
+        }
+
+        function editPlayer(index) {
+            const player = players[index];
+            document.getElementById('playerName').value = player.name;
+            document.getElementById('borrowAmount').value = player.borrowAmount;
+            document.getElementById('currentAmount').value = player.currentAmount;
+            editingIndex = index;
+        }
+
+        function toggleEdit(index, btn) {
+            if (editingIndex === -1) {
+                editingIndex = index;
+                btn.textContent = '保存';
+                updatePlayerList();
+            } else {
+                if (editingIndex === index) {
+                    const borrowAmount = parseInt(document.querySelector(`#borrow-${index} input`)?.value) || 0;
+                    const currentAmount = parseInt(document.querySelector(`#current-${index} input`)?.value) || 0;
+                    
+                    players[index].borrowAmount = borrowAmount;
+                    players[index].currentAmount = currentAmount;
+                    fetchGameData();
+                    editingIndex = -1;
+                    updatePlayerList();
+                } else {
+                    editingIndex = index;
+                    btn.textContent = '保存';
+                    updatePlayerList();
+                }
+            }
+        }
+
+        function showAddForm() {
+            document.querySelector('.input-group').style.display = 'flex';
+            document.getElementById('overlay').style.display = 'block';
+            clearInputs();
+        }
+
+        function hideAddForm() {
+            document.querySelector('.input-group').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            clearInputs();
+        }
+
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
+        function updatePlayerList() {
+            const playerList = document.getElementById('playerList');
+            playerList.innerHTML = '';
+            
+            let totalBorrow = 0;
+            let totalCurrent = 0;
+            let totalProfit = 0;
+            
+            players.forEach((player, index) => {
+                const profit = player.currentAmount - player.borrowAmount;
+                totalBorrow += player.borrowAmount;
+                totalCurrent += player.currentAmount;
+                totalProfit += profit;
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.innerHTML = `
+                    <div class="player-info">
+                        <span class="player-name">${player.name}</span>
+                        <div class="btn-group">
+                            <button onclick="toggleEdit(${index}, this)">${editingIndex === index ? '保存' : '编辑'}</button>
+                            <button onclick="deletePlayer(${index})" class="delete">删除</button>
+                        </div>
+                    </div>
+                    <div class="chips-info">
+                        <div class="chips-row">
+                            <span>
+                                <span class="label">借:</span>
+                                <span id="borrow-${index}" class="editable-text">
+                                    ${editingIndex === index ? 
+                                        `<input type="number" value="${player.borrowAmount}" onchange="updateBorrow(${index}, this.value)">` :
+                                        `<span class="value">${player.borrowAmount}</span>`}
+                                </span>
+                            </span>
+                            <span>
+                                <span class="label">持有:</span>
+                                <span id="current-${index}" class="editable-text">
+                                    ${editingIndex === index ? 
+                                        `<input type="number" value="${player.currentAmount}" onchange="updateCurrent(${index}, this.value)">` :
+                                        `<span class="value">${player.currentAmount}</span>`}
+                                </span>
+                            </span>
+                        </div>
+                        <div class="chips-row">
+                            <span class="profit ${profit >= 0 ? 'positive' : 'negative'}">
+                                收益: ${profit > 0 ? '+' : ''}${profit}
+                            </span>
+                            <span class="money ${profit >= 0 ? 'positive' : 'negative'}">
+                                金额: ${profit > 0 ? '+' : ''}${(profit * 0.2).toFixed(2)}元
+                            </span>
+                        </div>
+                    </div>
+                `;
+                playerList.appendChild(card);
+            });
+            
+            const totalChipsElement = document.getElementById('totalChips');
+            const totalMoneyElement = document.getElementById('totalMoney');
+            
+            totalChipsElement.innerHTML = `
+                <td><span class="label">总借入:</span></td>
+                <td><span class="value">${totalBorrow}</span></td>
+                <td><span class="label">总持有:</span></td>
+                <td><span class="value">${totalCurrent}</span></td>
+            `;
+            
+            totalMoneyElement.innerHTML = `
+                <td><span class="label">总收益:</span></td>
+                <td><span class="value ${totalProfit >= 0 ? 'positive' : 'negative'}">${totalProfit > 0 ? '+' : ''}${totalProfit}</span></td>
+                <td><span class="label">总金额:</span></td>
+                <td><span class="value ${totalProfit >= 0 ? 'positive' : 'negative'}">${totalProfit > 0 ? '+' : ''}${(totalProfit * 0.2).toFixed(2)}元</span></td>
+            `;
+        }
+
+        function clearInputs() {
+            document.getElementById('playerName').value = '';
+            document.getElementById('borrowAmount').value = '';
+            document.getElementById('currentAmount').value = '';
+            editingIndex = -1;
+        }
+
+        function setPageTitle() {
+            if (currentGame) {
+                document.title = currentGame.name;
+                document.querySelector('h1').textContent = currentGame.name;
+            }
+        }
+
+        fetchGameData();
+    </script>
+</body>
+</html> 
